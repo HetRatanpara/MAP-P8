@@ -1,3 +1,127 @@
+# CI/CD Practical — Instructor One-Page Handout
+
+![Jenkins Build](https://img.shields.io/badge/jenkins-BUILD_PASSING-brightgreen) ![Tests](https://img.shields.io/badge/tests-passing-brightgreen) ![Registry](https://img.shields.io/badge/registry-local%3A5000-blue)
+
+## Purpose
+
+This single-file handout explains a lightweight, local CI/CD practical using Jenkins, Docker and docker-compose. It's designed for a 10–15 minute instructor demo you can run from your laptop (Windows, cmd.exe).
+
+Goals (what the demo shows)
+
+- Checkout code from Git
+- Run unit tests (npm)
+- Build a Docker image and push to a local registry
+- Deploy the image to a staging stack using docker compose
+
+Architecture (compact)
+
+Developer (push) ---> Jenkins (pipeline) ---> Registry (localhost:5000) ---> Staging (docker compose)
+
+## Quick commands — run these on Windows (cmd.exe)
+
+All commands assume your current working directory is the repo root (where this README sits).
+
+- Start Jenkins + local registry (builds the custom Jenkins image used in the demo):
+
+```cmd
+docker compose -f jenkins/docker-compose.yml up -d --build
+```
+
+- Follow Jenkins logs and get the initial admin password:
+
+```cmd
+docker logs jenkins -f
+```
+
+or, if the volume is mapped locally:
+
+```cmd
+type jenkins\jenkins_home\secrets\initialAdminPassword
+```
+
+- Open Jenkins UI: http://localhost:8080 — install recommended plugins (Git, Pipeline). Create a Pipeline or Multibranch Pipeline and point it at this repo.
+
+- Run tests locally (optional quick check):
+
+```cmd
+cd app
+npm ci
+npm test
+```
+
+- Manually build & push an image (if you want to test registry behavior before Jenkins):
+
+```cmd
+docker build -t localhost:5000/sample-node-app:local -f app/Dockerfile app
+docker push localhost:5000/sample-node-app:local
+```
+
+- Deploy staging manually (compose will pull the tag in IMAGE_TAG or default to latest):
+
+```cmd
+set IMAGE_TAG=local
+docker compose -f deploy/staging/docker-compose.yml pull
+docker compose -f deploy/staging/docker-compose.yml up -d
+```
+
+## Quick verification (what to show the instructor)
+
+- Jenkins pipeline log — show stages: Checkout → Install & Test → Build Image → Push Image → Deploy Staging
+- Registry tags (query the registry API):
+
+```cmd
+curl http://localhost:5000/v2/sample-node-app/tags/list
+```
+
+- Staging service reachable (default mapping in stack):
+
+```cmd
+curl http://localhost:3001/
+```
+
+## Notes & gotchas (short)
+
+- If Docker refuses to push to `localhost:5000`, mark it as insecure in Docker Desktop: Settings → Docker Engine and add:
+
+```json
+{ "insecure-registries": ["localhost:5000"] }
+```
+
+- If Jenkins cannot push because `registry-creds` is missing, open Jenkins → Credentials → Add Global credential (Kind: Username with password or Secret text) with ID `registry-creds`.
+
+- The demo config mounts the host Docker socket into Jenkins for convenience. This is OK for a local demo but not for production.
+
+## Instructor demo script (10–12 minutes)
+
+1. Show repo tree and the `Jenkinsfile` (1 min).
+2. Start Jenkins: run the docker compose command and show logs until Jenkins is ready (2–3 min).
+3. Run `npm test` in `app/` to show tests pass (1 min).
+4. Trigger the Jenkins job (Build Now) and walk the console: show each stage (4–5 min).
+5. Open the staging endpoint and show the running app (1–2 min).
+
+Suggested small improvements (post-demo)
+
+- Add an approval step before production deploy.
+- Add a smoke test stage that runs after deploy to verify the service is up.
+- Replace the controller-mounted docker socket with ephemeral build agents for safer demos.
+
+## Badges and status
+
+The badges at the top are static placeholders for this local demo. For live status replace them with your Jenkins or CI provider badge URLs.
+
+## One-file summary
+
+This README is the one-page handout you can read aloud to your instructor and use during your demo. It contains the commands (Windows `cmd.exe`) needed to run the full pipeline locally, where to look for verification, and what to say while demonstrating.
+
+If you want, I can:
+
+- Create a printable PDF version of this page formatted for a one-page handout, or
+- Add a ready-to-print slide (A4) with the same content.
+
+---
+
+End of handout — good luck with your demo!
+
 # Jenkins CI/CD Practical (local, Windows-friendly)
 
 This workspace contains a minimal end-to-end CI/CD example using Jenkins and other open-source tools.
