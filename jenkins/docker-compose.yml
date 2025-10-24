@@ -3,6 +3,8 @@ services:
   jenkins:
     build: .
     container_name: jenkins
+    # Run the container as root so the Jenkins user can access the mounted Docker socket on the host
+    user: root
     privileged: true
     ports:
       - "8080:8080"
