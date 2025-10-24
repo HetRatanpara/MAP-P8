@@ -14,8 +14,15 @@ pipeline {
     }
     stage('Install & Test') {
       steps {
-        sh 'cd app && npm start'
-        sh 'cd app && npm test'
+        // Run tests inside an official Node image so 'npm' is available
+        // Mount the workspace's app directory into a transient node container
+        sh '''
+          docker run --rm \
+            -v ${WORKSPACE}/app:/usr/src/app \
+            -w /usr/src/app \
+            node:18-alpine \
+            sh -c "npm ci && npm test"
+        '''
       }
     }
     stage('Build Image') {
