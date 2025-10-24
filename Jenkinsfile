@@ -57,9 +57,10 @@ pipeline {
     }
     stage('Deploy Staging') {
       steps {
-        // Use the specific BUILD_NUMBER tag for an immutable deployment
-        sh 'IMAGE_TAG=${BUILD_NUMBER} docker-compose -f deploy/staging/docker-compose.yml pull'
-        sh 'IMAGE_TAG=${BUILD_NUMBER} docker-compose -f deploy/staging/docker-compose.yml up -d'
+  // Use the specific BUILD_NUMBER tag for an immutable deployment
+  // Use `docker compose` (plugin) instead of legacy `docker-compose` binary
+  sh 'IMAGE_TAG=${BUILD_NUMBER} docker compose -f deploy/staging/docker-compose.yml pull'
+  sh 'IMAGE_TAG=${BUILD_NUMBER} docker compose -f deploy/staging/docker-compose.yml up -d'
       }
     }
   }
