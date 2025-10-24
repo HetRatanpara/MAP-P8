@@ -20,16 +20,11 @@ pipeline {
     }
     stage('Install & Test') {
       steps {
-        // Run tests inside an official Node image so 'npm' is available
-        // Mount the workspace's app directory into a transient node container
-        // If package-lock.json exists use `npm ci` for reproducible installs,
-        // otherwise fall back to `npm install` so the build doesn't fail.
+        // Run npm install/test directly inside Jenkins container (node installed in custom Jenkins image)
         sh '''
-          docker run --rm \
-            -v ${WORKSPACE}/app:/usr/src/app \
-            -w /usr/src/app \
-            node:18-alpine \
-            sh -c "if [ -f package-lock.json ]; then npm ci; else npm install; fi && npm test"
+          cd app
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+          npm test
         '''
       }
     }

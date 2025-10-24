@@ -10,6 +10,9 @@ RUN apt-get update \
     > /etc/apt/sources.list.d/docker.list \
   && apt-get update \
   && apt-get install -y docker-ce-cli docker-compose-plugin \
+  # Install Node.js 18 (so npm is available inside the Jenkins container for quick CI tasks)
+  && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+  && apt-get install -y nodejs \
   && rm -rf /var/lib/apt/lists/*
 
 USER jenkins
