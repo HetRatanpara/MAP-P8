@@ -38,11 +38,16 @@ pipeline {
     }
     stage('Push Image') {
       steps {
-        // If credentials are configured in Jenkins, login first
+        // If credentials are configured in Jenkins, attempt to login first.
+        // If the credential ID is missing, proceed but warn instead of failing the build
         script {
           if (env.REGISTRY_CREDENTIALS) {
-            withCredentials([usernamePassword(credentialsId: env.REGISTRY_CREDENTIALS, usernameVariable: 'REG_USER', passwordVariable: 'REG_PSW')]) {
-              sh 'echo $REG_PSW | docker login -u $REG_USER --password-stdin ${REGISTRY}'
+            try {
+              withCredentials([usernamePassword(credentialsId: env.REGISTRY_CREDENTIALS, usernameVariable: 'REG_USER', passwordVariable: 'REG_PSW')]) {
+                sh 'echo $REG_PSW | docker login -u $REG_USER --password-stdin ${REGISTRY}'
+              }
+            } catch (err) {
+              echo "Registry credentials with ID '${env.REGISTRY_CREDENTIALS}' not found or unusable — skipping docker login. If your registry requires auth, add credentials in Jenkins with that ID. Error: ${err}"
             }
           }
         }
