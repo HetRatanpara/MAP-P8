@@ -1,5 +1,9 @@
 pipeline {
   agent any
+  options {
+    // Prevent Declarative from doing an automatic checkout before our stages
+    skipDefaultCheckout()
+  }
   environment {
     REGISTRY = "localhost:5000"
     IMAGE = "${REGISTRY}/sample-node-app"
