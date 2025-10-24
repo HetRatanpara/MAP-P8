@@ -9,122 +9,111 @@ This single-file handout explains a lightweight, local CI/CD practical using Jen
 Goals (what the demo shows)
 
 - Checkout code from Git
-- Run unit tests (npm)
-- Build a Docker image and push to a local registry
-- Deploy the image to a staging stack using docker compose
 
-Architecture (compact)
+# Quick README — minimal steps to run the CI/CD demo (Windows cmd.exe)
 
-Developer (push) ---> Jenkins (pipeline) ---> Registry (localhost:5000) ---> Staging (docker compose)
+This file contains only the necessary steps you need to run the practical locally and verify the staging service. Keep it open during your demo.
 
-## Quick commands — run these on Windows (cmd.exe)
+Prerequisites
 
-All commands assume your current working directory is the repo root (where this README sits).
+- Docker Desktop (Linux containers) installed and running
+- Docker CLI and Docker Compose available (Docker Desktop provides both)
+- 4 GB free RAM recommended
 
-- Start Jenkins + local registry (builds the custom Jenkins image used in the demo):
+Start Jenkins + local registry
+
+1. Open cmd.exe in the repo root (where this README sits).
+2. Start services (builds Jenkins image if needed):
 
 ```cmd
 docker compose -f jenkins/docker-compose.yml up -d --build
 ```
 
-- Follow Jenkins logs and get the initial admin password:
+3. Confirm Jenkins is up:
+
+```cmd
+docker compose -f jenkins/docker-compose.yml ps
+```
+
+One-time Jenkins setup (UI)
+
+1. Open http://localhost:8080 and complete the setup wizard (use initial admin password from logs):
 
 ```cmd
 docker logs jenkins -f
 ```
 
-or, if the volume is mapped locally:
+2. Install recommended plugins (ensure Git and Pipeline are installed).
+3. (Optional) Add Docker registry credential if you use a secured registry:
+   Jenkins → Credentials → System → Global → Add Credentials
+   - Kind: Username with password or Secret text
+   - ID: registry-creds
 
-```cmd
-type jenkins\jenkins_home\secrets\initialAdminPassword
-```
+Run the pipeline
 
-- Open Jenkins UI: http://localhost:8080 — install recommended plugins (Git, Pipeline). Create a Pipeline or Multibranch Pipeline and point it at this repo.
+1. In Jenkins create a Pipeline (or Multibranch) job pointing to this repo. Jenkins will use the `Jenkinsfile` in the repo.
+2. Click Build Now on your branch job.
+3. Watch Console Output: stages you should see — Checkout, Install & Test, Build Image, Push Image, Deploy Staging.
 
-- Run tests locally (optional quick check):
+Verify the image and staging service
 
-```cmd
-cd app
-npm ci
-npm test
-```
-
-- Manually build & push an image (if you want to test registry behavior before Jenkins):
-
-```cmd
-docker build -t localhost:5000/sample-node-app:local -f app/Dockerfile app
-docker push localhost:5000/sample-node-app:local
-```
-
-- Deploy staging manually (compose will pull the tag in IMAGE_TAG or default to latest):
-
-```cmd
-set IMAGE_TAG=local
-docker compose -f deploy/staging/docker-compose.yml pull
-docker compose -f deploy/staging/docker-compose.yml up -d
-```
-
-## Quick verification (what to show the instructor)
-
-- Jenkins pipeline log — show stages: Checkout → Install & Test → Build Image → Push Image → Deploy Staging
-- Registry tags (query the registry API):
+1. Check registry tags (should include build number and latest):
 
 ```cmd
 curl http://localhost:5000/v2/sample-node-app/tags/list
 ```
 
-- Staging service reachable (default mapping in stack):
+2. Confirm staging containers are running:
+
+```cmd
+docker compose -f deploy/staging/docker-compose.yml ps
+```
+
+3. Check logs (follow):
+
+```cmd
+docker compose -f deploy/staging/docker-compose.yml logs -f
+```
+
+4. Call the service (the app returns JSON):
 
 ```cmd
 curl http://localhost:3001/
 ```
 
-## Notes & gotchas (short)
-
-- If Docker refuses to push to `localhost:5000`, mark it as insecure in Docker Desktop: Settings → Docker Engine and add:
+Expected response:
 
 ```json
-{ "insecure-registries": ["localhost:5000"] }
+{ "status": "ok", "env": "staging" }
 ```
 
-- If Jenkins cannot push because `registry-creds` is missing, open Jenkins → Credentials → Add Global credential (Kind: Username with password or Secret text) with ID `registry-creds`.
+Notes & quick fixes
 
-- The demo config mounts the host Docker socket into Jenkins for convenience. This is OK for a local demo but not for production.
+- If `curl` is missing on Windows, open http://localhost:3001/ in your browser.
+- If push fails with `unauthorized`, add `registry-creds` in Jenkins (see above) and re-run the job.
+- If Docker refuses to push to localhost:5000, add `"insecure-registries": ["localhost:5000"]` to Docker Desktop → Settings → Docker Engine (JSON) and restart Docker.
 
-## Instructor demo script (10–12 minutes)
+Manual deploy (replicate what pipeline runs)
 
-1. Show repo tree and the `Jenkinsfile` (1 min).
-2. Start Jenkins: run the docker compose command and show logs until Jenkins is ready (2–3 min).
-3. Run `npm test` in `app/` to show tests pass (1 min).
-4. Trigger the Jenkins job (Build Now) and walk the console: show each stage (4–5 min).
-5. Open the staging endpoint and show the running app (1–2 min).
+1. If you want to manually deploy a specific tag (e.g., 16):
 
-Suggested small improvements (post-demo)
+```cmd
+set IMAGE_TAG=16
+docker compose -f deploy/staging/docker-compose.yml pull
+docker compose -f deploy/staging/docker-compose.yml up -d
+curl http://localhost:3001/
+```
 
-- Add an approval step before production deploy.
-- Add a smoke test stage that runs after deploy to verify the service is up.
-- Replace the controller-mounted docker socket with ephemeral build agents for safer demos.
+Cleanup
 
-## Badges and status
+```cmd
+docker compose -f deploy/staging/docker-compose.yml down
+docker compose -f jenkins/docker-compose.yml down
+```
 
-The badges at the top are static placeholders for this local demo. For live status replace them with your Jenkins or CI provider badge URLs.
+If anything fails: copy the Jenkins Console Output or the `docker compose` logs and paste them here — I will help pinpoint the fix.
 
-## One-file summary
-
-This README is the one-page handout you can read aloud to your instructor and use during your demo. It contains the commands (Windows `cmd.exe`) needed to run the full pipeline locally, where to look for verification, and what to say while demonstrating.
-
-If you want, I can:
-
-- Create a printable PDF version of this page formatted for a one-page handout, or
-- Add a ready-to-print slide (A4) with the same content.
-
----
-
-End of handout — good luck with your demo!
-
-# Jenkins CI/CD Practical (local, Windows-friendly)
-
-This workspace contains a minimal end-to-end CI/CD example using Jenkins and other open-source tools.
+That's it — this file contains the minimum commands and steps you need to run the demo and prove the staging service is reachable.
 
 What you get
 
@@ -296,116 +285,117 @@ then Apply & Restart Docker Desktop.
 
 Example: tag and push an image (you may have done this already):
 
+---
+
+# MAP-P8 — Quick & Clean README (minimum steps)
+
+This file gives the exact, minimal steps you need to run the CI/CD practical locally on Windows (cmd.exe).
+
+What this repo does (short)
+
+- Builds and tests a small Node.js app
+- Packages it as a Docker image, pushes to a local registry (localhost:5000)
+- Deploys the image to a staging docker-compose stack
+
+Prerequisites
+
+- Docker Desktop for Windows (Linux containers)
+- 4 GB free RAM recommended
+
+Quick start (copy & run in cmd.exe from repo root)
+
+1. Start Jenkins + registry (builds images if needed):
+
 ```cmd
-docker tag localhost:5000/sample-node-app:local localhost:5000/sample-node-app:local
-docker push localhost:5000/sample-node-app:local
+docker compose -f jenkins/docker-compose.yml up -d --build
 ```
 
-Verify tags in the registry:
+2. Confirm Jenkins is running:
+
+```cmd
+docker compose -f jenkins/docker-compose.yml ps
+```
+
+One-time: set up Jenkins UI
+
+1. Open http://localhost:8080 and follow the wizard. Get the initial password from:
+
+```cmd
+docker logs jenkins -f
+```
+
+2. Install recommended plugins (ensure Git and Pipeline are installed).
+3. (Optional) Add Docker registry credential if you later use a secured registry:
+   Jenkins → Credentials → System → Global → Add Credentials
+   - Kind: Username with password or Secret text
+   - ID: registry-creds
+
+Run the pipeline
+
+1. Create a Pipeline or Multibranch Pipeline in Jenkins that points to this repository (it will use the `Jenkinsfile`).
+2. Click Build Now on the branch job.
+3. Watch Console Output. Expected stages:
+   - Checkout
+   - Install & Test (npm)
+   - Build Image (docker build)
+   - Push Image (docker push)
+   - Deploy Staging (docker compose pull & up -d)
+
+Verify the deployment
+
+1. Registry tags (shows available tags):
 
 ```cmd
 curl http://localhost:5000/v2/sample-node-app/tags/list
 ```
 
-Deploying to staging (manual)
-
-1. If the registry has the `latest` tag, the provided staging compose expects `:latest`. If you pushed `:local` instead, either retag it as `:latest` and push, or change the compose to use `:local`.
-
-To retag and push `latest`:
+2. Check staging containers and logs:
 
 ```cmd
-docker tag localhost:5000/sample-node-app:local localhost:5000/sample-node-app:latest
-docker push localhost:5000/sample-node-app:latest
+docker compose -f deploy/staging/docker-compose.yml ps
+docker compose -f deploy/staging/docker-compose.yml logs -f
 ```
 
-To deploy using the provided compose file:
+3. Query the service (staging maps host port 3001 -> container 3000):
 
 ```cmd
+curl http://localhost:3001/
+```
+
+Expected response:
+
+```json
+{ "status": "ok", "env": "staging" }
+```
+
+Manual deploy (same commands pipeline runs)
+
+```cmd
+set IMAGE_TAG=16
 docker compose -f deploy/staging/docker-compose.yml pull
 docker compose -f deploy/staging/docker-compose.yml up -d
+curl http://localhost:3001/
 ```
 
-Staging will be available at http://localhost:3001/ (per `deploy/staging/docker-compose.yml`).
+Common quick fixes
 
-How the `Jenkinsfile` works (stage-by-stage)
+- If push is `unauthorized`: add `registry-creds` in Jenkins and re-run the job.
+- If Docker blocks push to localhost:5000, add to Docker Desktop → Settings → Docker Engine JSON:
 
-- environment:
-  - REGISTRY = "localhost:5000"
-  - IMAGE = "${REGISTRY}/sample-node-app"
-
-Stages:
-
-1. Checkout — Jenkins checks out the repository using SCM configured on the job.
-2. Install & Test — runs `npm ci` and `npm test` inside the `app` directory. This validates your code before building an image.
-3. Build Image — runs `docker build -t ${IMAGE}:${BUILD_NUMBER} app` and tags `:latest` as well.
-4. Push Image — pushes both `${BUILD_NUMBER}` tag and `latest` to the registry.
-5. Deploy Staging — runs `docker-compose -f deploy/staging/docker-compose.yml pull` and `up -d` on the host where the Jenkins job executes.
-
-Notes on immutability and best practice
-
-- The pipeline currently tags with `BUILD_NUMBER` and also pushes `latest`. For reproducible deployments prefer deploying a specific immutable tag (e.g., `${BUILD_NUMBER}`) rather than `latest`.
-- To use immutable tags in deployment, parameterize your compose files and have the pipeline pass the tag when running `docker-compose`.
-
-Suggested `deploy` change (parameterized image tag)
-
-Change `deploy/staging/docker-compose.yml` image line to:
-
-```yaml
-image: localhost:5000/sample-node-app:${IMAGE_TAG:-latest}
+```json
+{ "insecure-registries": ["localhost:5000"] }
 ```
 
-Then deploy with:
+- If Jenkins reports `docker compose: not found`, rebuild the Jenkins image with docker-cli & compose plugin and restart the jenkins stack:
 
 ```cmd
-set IMAGE_TAG=123
-docker compose -f deploy/staging/docker-compose.yml pull
-docker compose -f deploy/staging/docker-compose.yml up -d
+docker compose -f jenkins/docker-compose.yml up -d --build
 ```
 
-CI security and credential notes
+Cleanup
 
-- Do not run builds that use the controller as a build node in production; prefer ephemeral agents.
-- If you move to Docker Hub or another remote registry, add credentials in Jenkins (Credentials → Username with password or Docker Registry credential) and use `docker login` in the pipeline or the Docker Jenkins plugin.
+```cmd
+docker compose -f deploy/staging/docker-compose.yml down
+docker compose -f jenkins/docker-compose.yml down
+```
 
-Troubleshooting (common issues and fixes)
-
-- "failed to resolve reference ... not found": you are attempting to pull a tag (e.g., `latest`) that is absent in the registry — retag or adjust compose.
-- Jenkins can't run docker: ensure `/var/run/docker.sock` is mounted into the Jenkins container and the user inside Jenkins has access to it. The provided `jenkins/docker-compose.yml` already mounts it by default.
-- On Windows, mounting the Docker socket may be problematic. Use WSL2 with Docker Desktop enabled, or run a dedicated build agent with Docker installed.
-- Registry push blocked: add `localhost:5000` to `insecure-registries` in Docker Desktop settings.
-
-Files added and where to look
-
-- `app/` — app code and tests
-- `app/Dockerfile` — image build
-- `jenkins/Dockerfile` — Jenkins image (adds Docker CLI)
-- `jenkins/docker-compose.yml` — brings up Jenkins and a local registry
-- `Jenkinsfile` — pipeline used by Jenkins jobs
-- `deploy/staging/docker-compose.yml` and `deploy/production/docker-compose.yml` — deployment stacks
-
-How to demonstrate this to your instructor (suggested script)
-
-1. Show repository tree and explain each file's purpose (2 minutes).
-2. Start Jenkins + registry (show command and logs) (2 minutes).
-3. Run tests locally (`npm test`) and show they pass (1 minute).
-4. Build and push an image to the local registry; show the `docker push` output and query tags via the registry API (2 minutes).
-5. Trigger the Jenkins pipeline (click Build Now) and walk through build logs showing the stages: checkout → test → build → push → deploy (4–6 minutes).
-6. Show deployed staging site (open http://localhost:3001/) and logs (docker compose logs) (2 minutes).
-
-Next steps and improvements (for further work)
-
-- Add secret management: store registry credentials and other secrets in Jenkins Credentials or Vault.
-- Add static analysis and policy checks (SonarQube, ESLint, Trivy) into the pipeline.
-- Replace docker-compose deployments with Kubernetes (Helm / ArgoCD) for production-grade deployments.
-- Use a secure, external registry (Docker Hub, GitHub Container Registry) and rotate credentials.
-
-Contact / Notes
-
-If you want, I can update the repo to:
-
-- Parameterize deployment compose files to accept `IMAGE_TAG` and update `Jenkinsfile` to deploy a specific build tag (immutable deploys).
-- Add a small Jenkins pipeline example that logs into a secured registry using credentials stored in Jenkins.
-
----
-
-This README is intended to be read alongside a live demo. If you'd like, I can create a one-page slide or step-by-step handout formatted for printing/presentation for your instructor.
