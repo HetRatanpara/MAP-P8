@@ -1,0 +1,15 @@
+FROM jenkins/jenkins:lts
+
+USER root
+
+# Install Docker CLI and docker compose plugin so Jenkins can build/push images
+RUN apt-get update \
+  && apt-get install -y ca-certificates curl gnupg2 lsb-release apt-transport-https \
+  && curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg \
+  && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" \
+    > /etc/apt/sources.list.d/docker.list \
+  && apt-get update \
+  && apt-get install -y docker-ce-cli docker-compose-plugin \
+  && rm -rf /var/lib/apt/lists/*
+
+USER jenkins

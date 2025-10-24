@@ -1,0 +1,11 @@
+version: "3.8"
+services:
+  web:
+    # IMAGE_TAG is substituted at runtime; defaults to 'latest' when not provided
+    image: localhost:5000/sample-node-app:${IMAGE_TAG:-latest}
+    ports:
+      - "3002:3000"
+    environment:
+      - NODE_ENV=production
+    deploy:
+      replicas: 1
