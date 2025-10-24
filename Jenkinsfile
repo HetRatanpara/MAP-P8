@@ -9,6 +9,8 @@ pipeline {
   stages {
     stage('Checkout') {
       steps {
+        // Ensure workspace is clean to avoid 'not in a git directory' errors
+        deleteDir()
         checkout scm
       }
     }
