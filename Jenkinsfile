@@ -22,12 +22,14 @@ pipeline {
       steps {
         // Run tests inside an official Node image so 'npm' is available
         // Mount the workspace's app directory into a transient node container
+        // If package-lock.json exists use `npm ci` for reproducible installs,
+        // otherwise fall back to `npm install` so the build doesn't fail.
         sh '''
           docker run --rm \
             -v ${WORKSPACE}/app:/usr/src/app \
             -w /usr/src/app \
             node:18-alpine \
-            sh -c "npm ci && npm test"
+            sh -c "if [ -f package-lock.json ]; then npm ci; else npm install; fi && npm test"
         '''
       }
     }
